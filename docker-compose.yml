@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-artifactlog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-artifactlog}
+      POSTGRES_DB: ${POSTGRES_DB:-artifactlog}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-artifactlog} -d ${POSTGRES_DB:-artifactlog}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-artifactlog}:${POSTGRES_PASSWORD:-artifactlog}@db:5432/${POSTGRES_DB:-artifactlog}
+      SIGNING_KEY_ID: ${SIGNING_KEY_ID:-}
+      SIGNING_PRIVATE_KEY: ${SIGNING_PRIVATE_KEY:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
